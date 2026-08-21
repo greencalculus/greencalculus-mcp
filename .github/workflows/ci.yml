@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['18', '22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t greencalculus/mcp .
+      # Introspection over stdio against the real server — this is the check
+      # the MCP directories run, so it is the one worth failing CI on.
+      - name: introspect
+        run: |
+          echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
+            | docker run -i --rm greencalculus/mcp \
+            | tee /dev/stderr \
+            | grep -q '"tools"'
