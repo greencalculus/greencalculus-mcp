@@ -1,0 +1,48 @@
+{
+  "name": "greencalculus-mcp",
+  "version": "1.0.0",
+  "description": "Run the GreenCalculus MCP server over stdio — sourced carbon emission factors and audit-traced calculations an AI can cite.",
+  "type": "module",
+  "bin": {
+    "greencalculus-mcp": "bin/greencalculus-mcp.js"
+  },
+  "main": "src/bridge.js",
+  "exports": {
+    ".": "./src/bridge.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/greencalculus-mcp.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "carbon",
+    "emissions",
+    "emission-factors",
+    "ghg",
+    "climate",
+    "sustainability",
+    "esg",
+    "lca"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeremiahsay/greencalculus-mcp.git"
+  },
+  "homepage": "https://greencalculus.com/developers",
+  "bugs": {
+    "url": "https://github.com/jeremiahsay/greencalculus-mcp/issues"
+  },
+  "author": "GreenCalculus",
+  "license": "MIT"
+}
