@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "start": "node bin/greencalculus-mcp.js",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test test/*.test.js"
   },
   "engines": {
     "node": ">=18"
