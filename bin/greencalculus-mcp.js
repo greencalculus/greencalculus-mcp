@@ -39,7 +39,7 @@ if (!cfg.apiKey) {
   // byte on it corrupts the session. Not fatal — discovery is keyless, and a
   // client that only introspects should still start cleanly.
   process.stderr.write(
-    'greencalculus-mcp: no GREENCALCULUS_API_KEY set — discovery will work, tool calls will be refused. Free key: https://greencalculus.com/developers\n',
+    'greencalculus-mcp: no GREENCALCULUS_API_KEY set — discovery, search_factors and explain_absence will work; every other tool call will be refused. Free key: https://greencalculus.com/developers\n',
   );
 }
 
