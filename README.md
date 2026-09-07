@@ -47,13 +47,14 @@ Or with Docker — `-i` is required and `-t` must be omitted, because the contai
 }
 ```
 
-Get a free key at **https://greencalculus.com/developers** — no card. Discovery (`initialize`, `tools/list`) works without one; calling a tool needs it.
+Get a free key at **https://greencalculus.com/developers** — no card. Discovery (`initialize`, `tools/list`) works without one, and so do `search_factors` and `explain_absence`; every other tool needs a key.
 
 ## Tools
 
 | Tool | What it does |
 |---|---|
 | `lookup_factor` | Fetch one emission factor by key, with its source and version |
+| `lookup_factors` | Fetch many factors by key in one call — a portfolio is one request, not one per factor |
 | `search_factors` | Search the corpus by free text |
 | `resolve_factor` | Map a messy real-world description to the best-matching factor |
 | `explain_absence` | Say *why* a factor does not exist, rather than returning nothing |
