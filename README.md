@@ -102,9 +102,17 @@ weekly, so a publish that failed is retried without a new commit.
 
 `server.json` is the registry manifest, and the workflow rewrites its version
 from `package.json` before publishing — one source of truth, three places that
-have to agree. npm authenticates by
-[trusted publishing](https://docs.npmjs.com/trusted-publishers) and the registry
-by GitHub OIDC, so there is no publishing token in this repo.
+have to agree.
+
+npm authenticates by [trusted publishing](https://docs.npmjs.com/trusted-publishers),
+so there is no npm token here. The registry needs one secret, and the reason is
+worth knowing: we publish as `com.greencalculus/api`, a DNS namespace, and GitHub
+OIDC only ever grants `io.github.<org>/*`. So the registry step signs with the key
+matching the `v=MCPv1` TXT record on greencalculus.com, held as `MCP_PRIVATE_KEY`.
+[`scripts/rotate-registry-key.sh`](./scripts/rotate-registry-key.sh) generates a
+fresh pair and installs it without ever printing the private half; it prints the
+TXT record to publish. Without the secret the registry step skips and says so —
+npm still publishes.
 
 ## Also available
 
