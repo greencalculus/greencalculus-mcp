@@ -84,6 +84,21 @@ node bin/greencalculus-mcp.js # reads JSON-RPC on stdin
 docker build -t greencalculus/mcp .
 ```
 
+## Releasing
+
+Bump `version` in `package.json`, merge to `main`. That's the whole procedure.
+
+[`release.yml`](.github/workflows/release.yml) asks npm and the MCP registry
+whether they already have that version and publishes only where they don't, so
+a merge that bumps ships it and a merge that doesn't is a no-op. It also runs
+weekly, so a publish that failed is retried without a new commit.
+
+`server.json` is the registry manifest, and the workflow rewrites its version
+from `package.json` before publishing — one source of truth, three places that
+have to agree. npm authenticates by
+[trusted publishing](https://docs.npmjs.com/trusted-publishers) and the registry
+by GitHub OIDC, so there is no publishing token in this repo.
+
 ## Also available
 
 - **REST API** and docs — https://greencalculus.com/developers

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.greencalculus/api",
+  "description": "Sourced carbon emission factors + audit-traced calculations an AI can cite.",
+  "version": "1.0.3",
+  "websiteUrl": "https://greencalculus.com/developers",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "greencalculus-mcp",
+      "version": "1.0.3",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "GreenCalculus API key — free at greencalculus.com/developers. Without one, search_factors and explain_absence still work; the other ten tools are refused.",
+          "isSecret": true,
+          "name": "GREENCALCULUS_API_KEY"
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.greencalculus.com",
+      "headers": [
+        {
+          "description": "Bearer <your GreenCalculus API key> — free at greencalculus.com/developers. Optional: search_factors and explain_absence answer without one.",
+          "isSecret": true,
+          "name": "Authorization"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+name: Release
+
+# Self-healing publish: package.json is the only source of truth.
+#
+# Every run asks npm whether it already has this version and publishes only
+# when it doesn't. So a merge that bumps the version ships it, a merge that
+# doesn't is a no-op, and a publish that failed is retried by the weekly run
+# without needing a new commit. No release tags, no checklist.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "server.json"
+      - "src/**"
+      - "bin/**"
+      - ".github/workflows/release.yml"
+  schedule:
+    - cron: "31 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  npm:
+    name: npm
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write        # trusted publishing — no token, provenance included
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Trusted publishing needs Node >= 22.14.0 and npm >= 11.5.1.
+          # The server itself still supports Node 18 — CI tests that separately.
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: npm new enough for trusted publishing
+        run: |
+          npm install -g npm@latest
+          node --version
+          npm --version
+
+      - name: Read the version from package.json
+        id: v
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Is it already on npm?
+        id: check
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          FOUND=$(npm view "greencalculus-mcp@$V" version 2>/dev/null || true)
+          if [ -n "$FOUND" ]; then
+            echo "npm already has greencalculus-mcp $V — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "npm is missing greencalculus-mcp **$V** — publishing." >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Tests
+        if: steps.check.outputs.publish == 'true'
+        run: npm test
+
+      - name: Publish
+        if: steps.check.outputs.publish == 'true'
+        run: npm publish --access public
+
+  registry:
+    # The MCP registry is a third place the version lives. Left manual it
+    # drifts behind npm, which is how it ended up pinning 1.0.2.
+    name: MCP registry
+    needs: npm
+    if: always() && needs.npm.result == 'success'
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write        # mcp-publisher authenticates by GitHub OIDC
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version the manifest from package.json
+        # package.json stays the single source of truth; server.json follows it,
+        # so the two can never disagree about what was released.
+        run: |
+          V=$(node -p "require('./package.json').version")
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('server.json', 'utf8'));
+            m.version = process.env.V;
+            for (const p of m.packages || []) p.version = process.env.V;
+            fs.writeFileSync('server.json', JSON.stringify(m, null, 2) + '\n');
+          "
+          echo "version=$V" >> "$GITHUB_ENV"
+
+      - name: Does the registry already have it?
+        id: check
+        run: |
+          LATEST=$(curl -sS "https://registry.modelcontextprotocol.io/v0/servers?search=com.greencalculus" \
+            | node -e "
+              let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+                const rows=(JSON.parse(s).servers||[]).map(r=>r.server).filter(x=>x.name==='com.greencalculus/api');
+                process.stdout.write(rows.length?rows[rows.length-1].version:'');
+              });")
+          echo "registry has '$LATEST', repo has '$version'"
+          if [ "$LATEST" = "$version" ]; then
+            echo "MCP registry already lists $version — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "MCP registry lists $LATEST, npm has **$version** — publishing." >> "$GITHUB_STEP_SUMMARY"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to the MCP registry
+        if: steps.check.outputs.publish == 'true'
+        run: |
+          curl -sSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr A-Z a-z)_$(uname -m | sed 's/x86_64/amd64/').tar.gz" \
+            | tar xz mcp-publisher
+          ./mcp-publisher validate
+          # The OIDC token is short-lived, so log in immediately before publishing.
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
