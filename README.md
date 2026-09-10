@@ -1,5 +1,12 @@
 # GreenCalculus MCP server
 
+[![CI](https://github.com/greencalculus/greencalculus-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/greencalculus/greencalculus-mcp/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/greencalculus-mcp?label=npm&color=04BF62)](https://www.npmjs.com/package/greencalculus-mcp)
+[![MCP registry](https://img.shields.io/badge/MCP%20registry-com.greencalculus%2Fapi-04BF62)](https://registry.modelcontextprotocol.io)
+[![tools](https://img.shields.io/badge/tools-12-04BF62)](#tools)
+[![free tier](https://img.shields.io/badge/free%20tier-no%20card-04BF62)](https://greencalculus.com/developers/)
+[![licence](https://img.shields.io/badge/licence-MIT-blue)](./LICENSE)
+
 Sourced greenhouse-gas emission factors and audit-traced carbon calculations, as an MCP server. Every value comes back with its exact source cell and a pinned data version — so an agent hands back a number a person can cite and a machine can reproduce, instead of a guess.
 
 ## Do you need this package?
