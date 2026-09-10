@@ -86,7 +86,7 @@ jobs:
     environment: release
     permissions:
       contents: read
-      id-token: write        # mcp-publisher authenticates by GitHub OIDC
+      id-token: write        # reserved; the registry itself uses DNS auth
     steps:
       - uses: actions/checkout@v4
 
@@ -130,12 +130,38 @@ jobs:
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Is the signing key configured?
+        id: key
+        env:
+          MCP_PRIVATE_KEY: ${{ secrets.MCP_PRIVATE_KEY }}
+        run: |
+          if [ -n "$MCP_PRIVATE_KEY" ]; then
+            echo "have_key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have_key=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### MCP registry: skipped"
+              echo
+              echo "\`MCP_PRIVATE_KEY\` is not set, so the registry entry stays at its"
+              echo "current version. npm published normally."
+              echo
+              echo "The name \`com.greencalculus/api\` is a DNS namespace and can only be"
+              echo "published with the key matching the \`v=MCPv1\` TXT record on"
+              echo "greencalculus.com. GitHub OIDC only grants \`io.github.greencalculus/*\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Publish to the MCP registry
-        if: steps.check.outputs.publish == 'true'
+        if: steps.check.outputs.publish == 'true' && steps.key.outputs.have_key == 'true'
+        env:
+          MCP_PRIVATE_KEY: ${{ secrets.MCP_PRIVATE_KEY }}
         run: |
           curl -sSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr A-Z a-z)_$(uname -m | sed 's/x86_64/amd64/').tar.gz" \
             | tar xz mcp-publisher
           ./mcp-publisher validate
-          # The OIDC token is short-lived, so log in immediately before publishing.
-          ./mcp-publisher login github-oidc
+          # DNS auth, not OIDC: the OIDC identity is only granted
+          # io.github.greencalculus/*, and this server is published as
+          # com.greencalculus/api. The key must match the v=MCPv1 TXT record.
+          # The session is short-lived, so log in immediately before publishing.
+          ./mcp-publisher login dns --domain greencalculus.com --private-key "$MCP_PRIVATE_KEY"
           ./mcp-publisher publish
