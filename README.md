@@ -87,7 +87,7 @@ docker build -t greencalculus/mcp .
 ## Also available
 
 - **REST API** and docs — https://greencalculus.com/developers
-- **Client SDKs** (Python, JS/TS) — https://github.com/jeremiahsay/greencalculus-sdk
+- **Client SDKs** (Python, JS/TS) — https://github.com/greencalculus/greencalculus-sdk
 - **Official MCP registry** — `com.greencalculus/api`
 - **Smithery** — https://smithery.ai/servers/greencalculus/api
 
