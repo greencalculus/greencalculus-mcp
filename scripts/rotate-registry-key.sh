@@ -18,17 +18,30 @@ set -euo pipefail
 REPO="greencalculus/greencalculus-mcp"
 DOMAIN="greencalculus.com"
 
-command -v openssl >/dev/null || { echo "openssl not found" >&2; exit 1; }
 command -v gh >/dev/null || { echo "gh not found" >&2; exit 1; }
+
+# macOS ships LibreSSL as /usr/bin/openssl, which cannot generate Ed25519 keys.
+# Find one that can rather than failing three commands later with a blank key.
+OPENSSL=""
+for c in openssl /opt/homebrew/opt/openssl@3/bin/openssl /usr/local/opt/openssl@3/bin/openssl; do
+  if command -v "$c" >/dev/null 2>&1 && "$c" genpkey -algorithm ed25519 -out /dev/null >/dev/null 2>&1; then
+    OPENSSL=$(command -v "$c"); break
+  fi
+done
+if [ -z "$OPENSSL" ]; then
+  echo "No openssl on this machine can generate Ed25519 keys." >&2
+  echo "macOS ships LibreSSL, which cannot. Install OpenSSL 3:  brew install openssl@3" >&2
+  exit 1
+fi
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-openssl genpkey -algorithm ed25519 -out "$TMP/key.pem" 2>/dev/null
+"$OPENSSL" genpkey -algorithm ed25519 -out "$TMP/key.pem" 2>/dev/null
 
 # Ed25519 DER ends with the raw 32-byte seed; the registry wants it as hex.
-HEX=$(openssl pkey -in "$TMP/key.pem" -outform DER 2>/dev/null | tail -c 32 | xxd -p -c 64)
-PUB=$(openssl pkey -in "$TMP/key.pem" -pubout -outform DER 2>/dev/null | tail -c 32 | base64)
+HEX=$("$OPENSSL" pkey -in "$TMP/key.pem" -outform DER 2>/dev/null | tail -c 32 | xxd -p -c 64)
+PUB=$("$OPENSSL" pkey -in "$TMP/key.pem" -pubout -outform DER 2>/dev/null | tail -c 32 | base64)
 
 [ "${#HEX}" -eq 64 ] || { echo "private key is ${#HEX} hex chars, expected 64" >&2; exit 1; }
 [ "${#PUB}" -eq 44 ] || { echo "public key is ${#PUB} base64 chars, expected 44" >&2; exit 1; }
