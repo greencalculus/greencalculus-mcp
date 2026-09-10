@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      contents: read
+      contents: write       # create the GitHub Release
       id-token: write        # trusted publishing — no token, provenance included
     steps:
       - uses: actions/checkout@v4
@@ -75,6 +75,24 @@ jobs:
       - name: Publish
         if: steps.check.outputs.publish == 'true'
         run: npm publish --access public
+
+      - name: Tag it on GitHub
+        if: steps.check.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          # The tag follows package.json like the two registries do, so there is
+          # no fourth place the version can disagree. Idempotent on a re-run.
+          if gh release view "v$V" >/dev/null 2>&1; then
+            echo "Release v$V already exists." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh release create "v$V" \
+            --target "$GITHUB_SHA" \
+            --title "v$V" \
+            --notes "\`npx greencalculus-mcp@$V\` — [npm](https://www.npmjs.com/package/greencalculus-mcp/v/$V) · registry \`com.greencalculus/api\`" \
+            --generate-notes
 
   registry:
     # The MCP registry is a third place the version lives. Left manual it
