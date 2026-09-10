@@ -94,14 +94,22 @@ jobs:
         # package.json stays the single source of truth; server.json follows it,
         # so the two can never disagree about what was released.
         run: |
-          V=$(node -p "require('./package.json').version")
+          # node reads package.json itself — nothing is passed through the shell,
+          # so there is no unexported variable to arrive as undefined.
           node -e "
             const fs = require('fs');
+            const v = require('./package.json').version;
+            if (!v) { console.error('package.json has no version'); process.exit(1); }
             const m = JSON.parse(fs.readFileSync('server.json', 'utf8'));
-            m.version = process.env.V;
-            for (const p of m.packages || []) p.version = process.env.V;
+            m.version = v;
+            for (const p of m.packages || []) p.version = v;
             fs.writeFileSync('server.json', JSON.stringify(m, null, 2) + '\n');
           "
+          V=$(node -p "require('./server.json').version")
+          if [ -z "$V" ] || [ "$V" = "undefined" ]; then
+            echo "::error::server.json version is empty after the rewrite"
+            exit 1
+          fi
           echo "version=$V" >> "$GITHUB_ENV"
 
       - name: Does the registry already have it?
