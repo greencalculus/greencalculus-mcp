@@ -1,5 +1,12 @@
 # GreenCalculus MCP server
 
+[![CI](https://github.com/greencalculus/greencalculus-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/greencalculus/greencalculus-mcp/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/greencalculus-mcp?label=npm&color=04BF62)](https://www.npmjs.com/package/greencalculus-mcp)
+[![MCP registry](https://img.shields.io/badge/MCP%20registry-com.greencalculus%2Fapi-04BF62)](https://registry.modelcontextprotocol.io)
+[![tools](https://img.shields.io/badge/tools-12-04BF62)](#tools)
+[![free tier](https://img.shields.io/badge/free%20tier-no%20card-04BF62)](https://greencalculus.com/developers/)
+[![licence](https://img.shields.io/badge/licence-MIT-blue)](./LICENSE)
+
 Sourced greenhouse-gas emission factors and audit-traced carbon calculations, as an MCP server. Every value comes back with its exact source cell and a pinned data version — so an agent hands back a number a person can cite and a machine can reproduce, instead of a guess.
 
 ## Do you need this package?
@@ -83,6 +90,21 @@ npm test                      # unit tests, no network
 node bin/greencalculus-mcp.js # reads JSON-RPC on stdin
 docker build -t greencalculus/mcp .
 ```
+
+## Releasing
+
+Bump `version` in `package.json`, merge to `main`. That's the whole procedure.
+
+[`release.yml`](.github/workflows/release.yml) asks npm and the MCP registry
+whether they already have that version and publishes only where they don't, so
+a merge that bumps ships it and a merge that doesn't is a no-op. It also runs
+weekly, so a publish that failed is retried without a new commit.
+
+`server.json` is the registry manifest, and the workflow rewrites its version
+from `package.json` before publishing — one source of truth, three places that
+have to agree. npm authenticates by
+[trusted publishing](https://docs.npmjs.com/trusted-publishers) and the registry
+by GitHub OIDC, so there is no publishing token in this repo.
 
 ## Also available
 
