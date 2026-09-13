@@ -7,7 +7,7 @@
 [![free tier](https://img.shields.io/badge/free%20tier-no%20card-04BF62)](https://greencalculus.com/developers/)
 [![licence](https://img.shields.io/badge/licence-MIT-blue)](./LICENSE)
 
-Sourced greenhouse-gas emission factors and audit-traced carbon calculations, as an MCP server. Every value comes back with its exact source cell and a pinned data version — so an agent hands back a number a person can cite and a machine can reproduce, instead of a guess.
+Sourced greenhouse-gas emission factors and audit-traced carbon calculations, as an MCP server. Every value comes back with its exact source reference and a pinned data version — so an agent hands back a number a person can cite and a machine can reproduce, instead of a guess.
 
 ## Do you need this package?
 
