@@ -40,14 +40,14 @@ This package exists for the clients that can only spawn a local stdio process, a
 }
 ```
 
-Or with Docker — `-i` is required and `-t` must be omitted, because the container's stdin/stdout *are* the transport and a TTY corrupts the stream:
+Or with Docker — the image is published to GitHub Container Registry as `ghcr.io/greencalculus/greencalculus-mcp` (linux/amd64 and arm64, tags `latest` and each version). `-i` is required and `-t` must be omitted, because the container's stdin/stdout *are* the transport and a TTY corrupts the stream:
 
 ```json
 {
   "mcpServers": {
     "greencalculus": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "GREENCALCULUS_API_KEY", "greencalculus/mcp"],
+      "args": ["run", "-i", "--rm", "-e", "GREENCALCULUS_API_KEY", "ghcr.io/greencalculus/greencalculus-mcp"],
       "env": { "GREENCALCULUS_API_KEY": "YOUR_KEY" }
     }
   }
@@ -88,12 +88,12 @@ Diagnostics go to stderr. Nothing but JSON-RPC is ever written to stdout — a s
 ```bash
 npm test                      # unit tests, no network
 node bin/greencalculus-mcp.js # reads JSON-RPC on stdin
-docker build -t greencalculus/mcp .
+docker build -t greencalculus-mcp .   # local image; CI publishes ghcr.io/greencalculus/greencalculus-mcp
 ```
 
 ## Releasing
 
-Bump `version` in `package.json`, merge to `main`. That's the whole procedure.
+Bump `version` in `package.json`, merge to `main`. That's the whole procedure — npm, the MCP registry and the container image all follow from it.
 
 [`release.yml`](.github/workflows/release.yml) asks npm and the MCP registry
 whether they already have that version and publishes only where they don't, so

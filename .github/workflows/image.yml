@@ -1,0 +1,93 @@
+name: Image
+
+# Publishes the bridge as a container image so `docker run` works without a
+# local build. Same self-healing shape as release.yml: package.json is the only
+# source of truth, and every run pushes the version tag it finds there, so a
+# retried run is harmless and a missed one is caught by the next.
+#
+# Image: ghcr.io/greencalculus/greencalculus-mcp  (tags: <version>, latest)
+# GHCR needs no account of its own — GITHUB_TOKEN with packages:write is the
+# whole credential. Docker Hub was deliberately not used: no credential exists
+# and it would be a fourth registry to keep alive.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "src/**"
+      - "bin/**"
+      - "Dockerfile"
+      - ".github/workflows/image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: image
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/greencalculus/greencalculus-mcp
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the version from package.json
+        id: v
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the host-arch image for a smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ env.IMAGE }}:smoke
+
+      - name: Introspect over stdio against the real server
+        # The check every MCP directory runs; the image is not published unless
+        # it lists tools. `-i` without `-t`: stdin/stdout are the transport.
+        run: |
+          echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
+            | docker run -i --rm "$IMAGE:smoke" \
+            | tee /dev/stderr \
+            | grep -q '"tools"'
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push linux/amd64 + linux/arm64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.v.outputs.version }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/greencalculus/greencalculus-mcp
+            org.opencontainers.image.description=GreenCalculus MCP bridge — sourced emission factors and audit-traced carbon calculations for any MCP client
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.version=${{ steps.v.outputs.version }}
+
+      - name: Summary
+        run: |
+          {
+            echo "Published \`$IMAGE:${{ steps.v.outputs.version }}\` and \`$IMAGE:latest\` (linux/amd64, linux/arm64)."
+            echo
+            echo '```'
+            echo "docker run -i --rm -e GREENCALCULUS_API_KEY=gc_live_… $IMAGE"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
