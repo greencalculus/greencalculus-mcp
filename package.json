@@ -1,6 +1,6 @@
 {
   "name": "greencalculus-mcp",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "mcpName": "com.greencalculus/api",
   "description": "Run the GreenCalculus MCP server over stdio — sourced carbon emission factors and audit-traced calculations an AI can cite.",
   "type": "module",
