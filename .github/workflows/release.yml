@@ -169,6 +169,32 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Wait for npm to serve the new version
+        # The registry validates a packages[] entry by fetching that exact
+        # version FROM npm, and npm's read API lags its own publish. On 1.0.4
+        # the registry job asked at 01:37:39 and npm began serving it at
+        # 01:38:14 -- 35 seconds later -- so the job failed with
+        #   "NPM package 'greencalculus-mcp' exists, but version '1.0.4' was
+        #    not found (status: 404)"
+        # while every other signal (npm job green, tag cut, image built) said
+        # the release had landed. needs: npm was never the missing piece; the
+        # precondition is npm SERVING the version, not having published it.
+        #
+        # This waits before logging in, deliberately: the registry session is
+        # short-lived, so login and publish have to stay adjacent.
+        if: steps.check.outputs.publish == 'true' && steps.key.outputs.have_key == 'true'
+        run: |
+          for i in $(seq 1 20); do
+            if npm view "greencalculus-mcp@$version" version >/dev/null 2>&1; then
+              echo "npm is serving $version (attempt $i)."
+              exit 0
+            fi
+            echo "npm has not caught up to $version (attempt $i/20); waiting 15s."
+            sleep 15
+          done
+          echo "::error::npm never served $version within five minutes."
+          exit 1
+
       - name: Publish to the MCP registry
         if: steps.check.outputs.publish == 'true' && steps.key.outputs.have_key == 'true'
         env:
@@ -180,6 +206,37 @@ jobs:
           # DNS auth, not OIDC: the OIDC identity is only granted
           # io.github.greencalculus/*, and this server is published as
           # com.greencalculus/api. The key must match the v=MCPv1 TXT record.
-          # The session is short-lived, so log in immediately before publishing.
-          ./mcp-publisher login dns --domain greencalculus.com --private-key "$MCP_PRIVATE_KEY"
-          ./mcp-publisher publish
+          #
+          # Log in immediately before each attempt. The session is short-lived,
+          # so a retry needs a fresh token rather than the previous one.
+          for attempt in 1 2 3; do
+            ./mcp-publisher login dns --domain greencalculus.com --private-key "$MCP_PRIVATE_KEY"
+            if ./mcp-publisher publish; then
+              echo "Published on attempt $attempt."
+              exit 0
+            fi
+            echo "Publish failed (attempt $attempt/3); waiting 30s."
+            sleep 30
+          done
+          echo "::error::mcp-publisher publish failed three times."
+          exit 1
+
+      - name: Say plainly what is now inconsistent
+        # This job failing is easy to miss: npm goes green beside it, the tag is
+        # cut, the image builds, and Glama publishes its own release -- so every
+        # visible signal says the release landed. Spell out the actual state.
+        if: failure()
+        run: |
+          {
+            echo "### MCP registry: NOT updated"
+            echo
+            echo "npm and the \`v$version\` tag are published, but the registry entry"
+            echo "\`com.greencalculus/api\` is still on its previous version, so every"
+            echo "directory that ingests the registry is advertising the old one."
+            echo
+            echo "Re-run this workflow (\`workflow_dispatch\`); both jobs check before"
+            echo "they act, so npm will no-op and only the registry will publish."
+            echo
+            echo "Verify with the API, not this page:"
+            echo "\`curl -s 'https://registry.modelcontextprotocol.io/v0/servers?search=greencalculus'\`"
+          } >> "$GITHUB_STEP_SUMMARY"
